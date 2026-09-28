@@ -1,0 +1,45 @@
+# ---------- 密钥与凭据（绝对不能推） ----------
+.env
+.env.local
+.credentials.yaml
+*.key
+*.pem
+
+# ---------- Python 虚拟环境与缓存 ----------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ---------- 运行时数据（跑起来会生成，不是源码） ----------
+data/memory/
+data/sessions/
+data/vector_store/
+logs/
+*.log
+
+
+# ---------- 编辑器 / 系统 ----------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 垃圾文件
+Path
+_desc.txt
+
+# ---------- 对外材料 / AI 工具痕迹（绝不进公开仓库）----------
+# PITCH.md / PITCH_SPEECH.md 是参赛与口头演讲材料，已移出项目目录；
+# CLAUDE.md 是本地 AI 工具的项目说明，保留在本地但不发布。
+# 这三条钉在这里，防止以后误放回来又被 add 进去。
+PITCH.md
+PITCH_SPEECH.md
+CLAUDE.md
+
+# ---------- data/ 根目录下的运行产物（agent 跑出来的报告，不是源码）----------
+data/*.md
+data/*.json
+data/*.txt
