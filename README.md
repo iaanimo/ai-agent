@@ -1,5 +1,7 @@
 # 🤖 AI Agent Framework
 
+![tests](https://github.com/iaanimo/ai-agent/actions/workflows/tests.yml/badge.svg)
+
 基于 **LLM + LangChain** 搭建的模块化 AI 智能体框架，集成了规划、记忆、工具调用、RAG、思维链推理和多智能体协作等核心能力。
 
 ---

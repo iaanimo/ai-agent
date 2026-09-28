@@ -1,0 +1,39 @@
+name: tests
+
+# README 里说"39 个测试全部用假 LLM、不联网、不碰真实 data/"。
+# 别人只能信你，除非这里真跑一遍 —— 所以这个文件的作用是：让那句话可以被验证。
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: 安装测试依赖
+        # 只装测试真正需要的。requirements.txt 里那三个是 try/except 兜底的可选件，
+        # 测试一行都不碰 —— 尤其 sentence-transformers 会把 torch 拖进来（约 2GB），
+        # 没必要为了跑 5 秒的测试装它。
+        run: python -m pip install pytest langchain-core langchain-community langchain-openai langchain-text-splitters faiss-cpu pypdf docx2txt beautifulsoup4 duckduckgo-search numexpr python-dotenv pydantic rich colorama fastapi uvicorn
+
+      - name: 单元测试
+        # PYTHONIOENCODING：测试输出里有 ✅ 这类字符，Windows runner 默认 GBK 会炸
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python -m pytest -q

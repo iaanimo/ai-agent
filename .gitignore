@@ -43,3 +43,10 @@ CLAUDE.md
 data/*.md
 data/*.json
 data/*.txt
+
+# ---------- 个人环境脚本（不进公开仓库）----------
+# describe_image.py 是本地看图旁路（本机 LLM 无视觉能力时的代偿），与框架无关；
+# demo_capture/demo_showcase 里写死了本机绝对路径，别人跑不了。
+describe_image.py
+demo_capture.py
+demo_showcase.py
