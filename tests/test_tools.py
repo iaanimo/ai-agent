@@ -1,6 +1,8 @@
 """Tests for the tool layer: calculator safety, file containment,
 code executor timeout, and search result filtering."""
 
+import os
+
 import pytest
 
 from tools.calculator import CalculatorTool
@@ -43,8 +45,12 @@ def test_resolve_data_path_allows_relative(temp_project_root):
 
 
 def test_resolve_data_path_rejects_absolute(temp_project_root):
+    # 绝对路径的形态分平台：Windows 是 "C:/…"，POSIX 是 "/…"。
+    # 原来只写了前者 —— 在 Linux 上 "C:/Windows/win.ini" 其实是个相对路径，
+    # 不会抛异常，于是这条测试在 CI 的 ubuntu runner 上假红（实测过一次）。
+    abs_path = "C:/Windows/win.ini" if os.name == "nt" else "/etc/passwd"
     with pytest.raises(ValueError):
-        resolve_data_path("C:/Windows/win.ini")
+        resolve_data_path(abs_path)
 
 
 def test_resolve_data_path_rejects_escape(temp_project_root):

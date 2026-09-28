@@ -50,3 +50,9 @@ data/*.txt
 describe_image.py
 demo_capture.py
 demo_showcase.py
+
+# ---------- 测试残留（会落在 cwd，不是源码）----------
+# test_memory.py 的 tempfile.mkdtemp() 与 pytest 的 tmp_path 都在 cwd 留下目录；
+# 加这两条，免得哪天再被 git add -A 顺手带进仓库（已经带进去过一次）。
+/pytest-of-*/
+/tmp*/
