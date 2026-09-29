@@ -62,13 +62,13 @@ def test_concurrent_instances_do_not_clobber_each_other():
     a = LongTermMemory(persist_dir=persist_dir)
     b = LongTermMemory(persist_dir=persist_dir)
 
-    assert a.store("A 记的：用户在准备面试") is True
-    assert b.store("B 记的：用户住在城中村") is True
+    assert a.store("A 记的：用户偏好深色主题") is True
+    assert b.store("B 记的：用户常驻上海") is True
 
     contents = [e["content"] for e in LongTermMemory(persist_dir=persist_dir).get_all()]
     assert len(contents) == 2
-    assert "A 记的：用户在准备面试" in contents
-    assert "B 记的：用户住在城中村" in contents
+    assert "A 记的：用户偏好深色主题" in contents
+    assert "B 记的：用户常驻上海" in contents
 
 
 def test_migrates_legacy_json_once():
