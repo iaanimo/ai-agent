@@ -9,14 +9,11 @@ Load and process documents from various formats:
   - Directory (batch loading)
 """
 
-import os
 from pathlib import Path
-from typing import Optional
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from config.settings import get_settings
 
 
 class DocumentLoader:

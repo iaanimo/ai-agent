@@ -13,7 +13,6 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from .document_loader import DocumentLoader
 from .vectorstore import VectorStore
-from config.settings import get_settings
 
 
 class RAGRetriever:
@@ -119,7 +118,6 @@ Provide a clear, accurate answer based on the context above."""
             return ""
         parts = []
         for i, doc in enumerate(docs, 1):
-            source = doc.metadata.get("source", "unknown")
             parts.append(f"[Doc {i}] {doc.page_content[:500]}")
         return "\n\n".join(parts)
 

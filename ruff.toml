@@ -1,0 +1,10 @@
+# 只开 F 类：未定义名 / 未使用 import / f-string 缺占位符 —— 也就是「正确性」那一层。
+# 刻意不开 E/W 的风格规则，也不上 mypy：这个仓库的价值在行为测试，不在风格统一。
+#
+# 加这道网的理由很具体：core/agent.py 里有个类型注解引用了从没导入的 RAGRetriever，
+# 41 个测试 + 双 OS CI 全绿，都看不见它 —— ruff 一眼就抓到。
+
+exclude = [".venv", "data"]
+
+[lint]
+select = ["F"]

@@ -7,7 +7,6 @@ Centralized configuration management using pydantic-settings.
 import os
 from pathlib import Path
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv

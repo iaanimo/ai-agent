@@ -59,7 +59,6 @@ class SearchTool:
         Retries up to 3 times with a short backoff, so transient network
         hiccups don't turn into "search failed".
         """
-        from bs4 import BeautifulSoup
 
         last_err: Optional[Exception] = None
         for attempt in range(3):

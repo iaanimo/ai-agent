@@ -17,7 +17,6 @@ from typing import Any, Optional
 from dataclasses import dataclass, field
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_core.chat_history import BaseChatMessageHistory
 
 from config.settings import get_settings
 
@@ -388,7 +387,6 @@ class Memory:
     """
 
     def __init__(self, window_size: int = 20, enable_long_term: bool = True):
-        settings = get_settings()
         self.conversation = ConversationBuffer(window_size=window_size)
         self.working = WorkingMemory()
         self.long_term = LongTermMemory() if enable_long_term else None

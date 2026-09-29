@@ -47,14 +47,14 @@ class ResearcherAgent(SpecializedAgent):
         """Perform deep research on a topic."""
         prompt = f"Deep research on: {topic}"
         if aspects:
-            prompt += f"\n\nSpecific aspects to investigate:\n" + "\n".join(f"- {a}" for a in aspects)
+            prompt += "\n\nSpecific aspects to investigate:\n" + "\n".join(f"- {a}" for a in aspects)
         prompt += "\n\nProvide a comprehensive research report."
         return await self.execute(prompt)
 
     async def compare_options(self, options: list[str], criteria: list[str] = None) -> str:
         """Compare multiple options against criteria."""
-        prompt = f"Compare the following options:\n" + "\n".join(f"{i+1}. {o}" for i, o in enumerate(options))
+        prompt = "Compare the following options:\n" + "\n".join(f"{i+1}. {o}" for i, o in enumerate(options))
         if criteria:
-            prompt += f"\n\nEvaluation criteria:\n" + "\n".join(f"- {c}" for c in criteria)
+            prompt += "\n\nEvaluation criteria:\n" + "\n".join(f"- {c}" for c in criteria)
         prompt += "\n\nProvide a detailed comparison table and recommendation."
         return await self.execute(prompt)

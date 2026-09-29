@@ -68,6 +68,6 @@ class ReviewerAgent(SpecializedAgent):
         """Evaluate a solution against criteria."""
         prompt = f"Evaluate this solution:\n\n{solution}"
         if criteria:
-            prompt += f"\n\nEvaluation criteria:\n" + "\n".join(f"- {c}" for c in criteria)
+            prompt += "\n\nEvaluation criteria:\n" + "\n".join(f"- {c}" for c in criteria)
         prompt += "\n\nProvide a detailed evaluation with scores and recommendations."
         return await self.execute(prompt)

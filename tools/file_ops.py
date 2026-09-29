@@ -4,9 +4,7 @@ File Operations Tool
 Read, write, and list files.
 """
 
-import os
 from pathlib import Path
-from typing import Optional
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field

@@ -13,7 +13,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse  
 from pydantic import BaseModel, Field  
   
-from config.settings import get_settings
 from core.agent import Agent, AgentMode
 from core.session_store import SessionStore
 from core.memory import Memory

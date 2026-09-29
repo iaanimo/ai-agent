@@ -10,7 +10,6 @@ Chain of Thought (CoT) Reasoning
 
 import json
 from enum import Enum
-from typing import Optional
 from dataclasses import dataclass, field
 
 from langchain_core.language_models import BaseChatModel

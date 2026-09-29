@@ -11,21 +11,25 @@ import json
 import time
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from dataclasses import dataclass, field
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from rich.console import Console
 from rich.panel import Panel
-from rich.markdown import Markdown
 
 from .llm_factory import create_llm
 from .memory import Memory
 from .planner import Planner, Plan, PlanStep, StepStatus
 from .reasoning import ChainOfThought, CoTStrategy, ReasoningChain
-from .executor import ToolExecutor, FunctionCaller, ToolResult
+from .executor import ToolExecutor, FunctionCaller
 from tools.file_ops import resolve_data_path
+
+if TYPE_CHECKING:
+    # 只为类型注解存在，运行时不 import —— rag/retriever.py 里有
+    # `from core.llm_factory import get_llm`，真 import 会让 core <-> rag 成环。
+    from rag import RAGRetriever
 
 console = Console()
 

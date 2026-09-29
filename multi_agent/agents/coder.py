@@ -66,5 +66,5 @@ class CoderAgent(SpecializedAgent):
         """Refactor code for better quality."""
         prompt = f"Refactor this code:\n```\n{code}\n```"
         if goals:
-            prompt += f"\n\nRefactoring goals:\n" + "\n".join(f"- {g}" for g in goals)
+            prompt += "\n\nRefactoring goals:\n" + "\n".join(f"- {g}" for g in goals)
         return await self.execute(prompt)

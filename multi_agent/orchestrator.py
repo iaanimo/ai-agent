@@ -18,7 +18,6 @@ from dataclasses import dataclass, field
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from rich.console import Console
-from rich.panel import Panel
 
 from core.llm_factory import create_llm
 from core.executor import ToolExecutor

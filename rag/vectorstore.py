@@ -4,9 +4,7 @@ Vector Store
 Unified vector store interface supporting FAISS and ChromaDB.
 """
 
-import os
 from pathlib import Path
-from typing import Optional
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings

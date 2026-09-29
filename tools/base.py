@@ -4,7 +4,6 @@ Base Tool
 All custom tools inherit from this base class.
 """
 
-from abc import ABC
 from typing import Any
 
 from langchain_core.tools import BaseTool

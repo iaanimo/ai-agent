@@ -8,13 +8,12 @@ import json
 import time
 import traceback
 from typing import Any, Callable, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
-from langchain_core.tools import BaseTool, StructuredTool
+from langchain_core.tools import BaseTool
 
-from config.settings import get_settings
 
 
 # ─── 执行结果 ─────────────────────────────────────────────────
