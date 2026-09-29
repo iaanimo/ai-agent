@@ -14,8 +14,6 @@ from dataclasses import dataclass, field
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.output_parsers import JsonOutputParser
-from pydantic import BaseModel as PydanticBaseModel, Field
 
 
 # ─── 数据结构 ─────────────────────────────────────────────────

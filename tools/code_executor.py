@@ -1,12 +1,17 @@
 """
 Code Executor Tool
 ===================
-Execute Python code in an isolated subprocess with a hard timeout.
+Execute Python code in a separate subprocess (``python -I`` isolated mode)
+with a hard timeout.
+
+Security boundary (accurate): ``-I`` only isolates environment variables and
+user site-packages, and the timeout kills runaway processes. This is NOT a
+sandbox — the subprocess can read/write the filesystem and access the network.
+Run untrusted code in a container/VM instead.
 """
 
 import subprocess
 import sys
-from typing import Optional
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
@@ -18,10 +23,10 @@ class CodeExecutorInput(BaseModel):
 
 
 class CodeExecutorTool:
-    """Python code execution tool: isolated subprocess + enforced timeout."""
+    """Python code execution tool: separate subprocess + enforced timeout (no FS/network sandbox)."""
 
     name = "code_executor"
-    description = "Execute Python code and return the output. Use this for calculations, data processing, or any task that requires code. The code runs in an isolated subprocess with a hard timeout and access to common libraries."
+    description = "Execute Python code and return the output. Use this for calculations, data processing, or any task that requires code. The code runs in a separate subprocess with a hard timeout and access to common libraries."
 
     # Modules pre-imported into the subprocess so snippets keep working.
     PRELUDE = (
@@ -36,7 +41,7 @@ class CodeExecutorTool:
 
     @staticmethod
     def execute(code: str, timeout: int = 30) -> str:
-        """Execute Python code in an isolated subprocess and capture output."""
+        """Execute Python code in a subprocess and capture output."""
         # Validate and clamp the timeout (1-120s).
         try:
             timeout = int(timeout)

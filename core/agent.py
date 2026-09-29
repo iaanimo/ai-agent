@@ -271,7 +271,7 @@ class Agent:
                                 "If you already have the answer, use the 'final_answer' tool."
                     ))
                     continue
-                self._log(f"💬 Direct response (no tool call)")
+                self._log("💬 Direct response (no tool call)")
                 return response.content
 
             thought = parsed.get("thought", "")
@@ -296,7 +296,7 @@ class Agent:
                     except Exception as e:
                         self._log(f"⚠️ Failed to write report: {e}", style="yellow")
                         answer = f"{answer}\n\n(⚠️ 保存文件失败: {e})"
-                self._log(f"💬 Final answer provided")
+                self._log("💬 Final answer provided")
                 return answer
 
             # Execute tool
