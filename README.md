@@ -394,12 +394,6 @@ python -m pytest        # 或 .venv/Scripts/python.exe -m pytest
 
 ---
 
-## 📄 License
-
-MIT License
-
----
-
 ## 🙏 致谢
 
 - [LangChain](https://github.com/langchain-ai/langchain) — 核心框架
@@ -418,7 +412,7 @@ MIT License
 双击 start.bat，或在命令行运行：
 
 ```bat
-cd /d D:\deepseek\deepseek harness\file\ai-agent
+cd /d ai-agent
 .venv\Scripts\python.exe server.py
 ```
 
