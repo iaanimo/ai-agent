@@ -1,6 +1,8 @@
 """Tests for the memory layer: dedup, CJK search, delete, context assembly."""
 
+import json
 import tempfile
+from pathlib import Path
 
 from core.memory import LongTermMemory, Memory
 
@@ -46,6 +48,46 @@ def test_load_backfills_ids():
     mem = _ltm()
     mem.store("old entry")
     assert all("id" in e for e in mem.get_all())
+
+
+def test_concurrent_instances_do_not_clobber_each_other():
+    """Two instances in one process must not overwrite each other's writes.
+
+    Regression: persistence used to rewrite the whole store from an in-process
+    snapshot, so whichever instance wrote last silently wiped everything the
+    others had added since they loaded. Two instances really do coexist — each
+    cached Agent owns one, and /api/memories builds a fresh one per request.
+    """
+    persist_dir = tempfile.mkdtemp()
+    a = LongTermMemory(persist_dir=persist_dir)
+    b = LongTermMemory(persist_dir=persist_dir)
+
+    assert a.store("A 记的：用户在准备面试") is True
+    assert b.store("B 记的：用户住在城中村") is True
+
+    contents = [e["content"] for e in LongTermMemory(persist_dir=persist_dir).get_all()]
+    assert len(contents) == 2
+    assert "A 记的：用户在准备面试" in contents
+    assert "B 记的：用户住在城中村" in contents
+
+
+def test_migrates_legacy_json_once():
+    """The pre-SQLite JSON store is imported once and kept aside as .bak."""
+    persist_dir = tempfile.mkdtemp()
+    legacy = Path(persist_dir) / "long_term_memory.json"
+    legacy.write_text(
+        json.dumps([{"content": "旧格式条目", "category": "general", "timestamp": 1.0}]),
+        encoding="utf-8",
+    )
+
+    mem = LongTermMemory(persist_dir=persist_dir)
+    assert [e["content"] for e in mem.get_all()] == ["旧格式条目"]
+    assert mem.get_all()[0]["id"]                    # id backfilled
+    assert not legacy.exists()                       # original moved aside
+    assert (Path(persist_dir) / "long_term_memory.json.bak").exists()
+
+    # constructing again must not re-import or duplicate
+    assert len(LongTermMemory(persist_dir=persist_dir).get_all()) == 1
 
 
 # ─── Memory (context assembly) ─────────────────────────────────

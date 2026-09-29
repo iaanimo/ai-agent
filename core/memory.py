@@ -8,8 +8,10 @@ Memory System
 """
 
 import json
+import sqlite3
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
 from dataclasses import dataclass, field
@@ -149,30 +151,112 @@ class LongTermMemory:
     """
     Persistent memory backed by keyword search (Chinese via character bigrams).
     Stores and retrieves past experiences, facts, and learnings.
+
+    Storage is SQLite (stdlib). Every mutation is a statement against the shared
+    database file, never a rewrite of an in-process snapshot — that is what makes
+    concurrent writers safe. Several instances do coexist: each cached Agent owns
+    one, and the /api/memories routes build a fresh one per request. With
+    whole-file rewrites, whichever instance wrote last silently wiped everything
+    the others had added since they loaded.
     """
 
     MAX_ENTRIES = 500
+    DB_NAME = "long_term_memory.db"
+    LEGACY_JSON = "long_term_memory.json"
+
+    _SCHEMA = """
+        CREATE TABLE IF NOT EXISTS memories (
+            id           TEXT PRIMARY KEY,
+            content      TEXT NOT NULL,
+            category     TEXT NOT NULL DEFAULT 'general',
+            metadata     TEXT NOT NULL DEFAULT '{}',
+            keywords     TEXT NOT NULL DEFAULT '[]',
+            timestamp    REAL NOT NULL,
+            access_count INTEGER NOT NULL DEFAULT 0
+        )
+    """
 
     def __init__(self, persist_dir: Optional[str] = None):
         settings = get_settings()
         self.persist_dir = Path(persist_dir or (settings.data_dir / "memory"))
         self.persist_dir.mkdir(parents=True, exist_ok=True)
-        self._memory_file = self.persist_dir / "long_term_memory.json"
-        self._entries: list[dict] = self._load()
+        self._db_path = self.persist_dir / self.DB_NAME
+        conn = sqlite3.connect(self._db_path, timeout=10.0)
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute(self._SCHEMA)
+            conn.commit()
+        finally:
+            conn.close()
+        self._migrate_legacy_json()
 
-    def _load(self) -> list[dict]:
-        if self._memory_file.exists():
-            with open(self._memory_file, "r", encoding="utf-8") as f:
-                entries = json.load(f)
-            # Backfill ids for entries saved before ids existed
+    @contextmanager
+    def _conn(self):
+        """One short-lived connection per operation.
+
+        Connections are never shared between instances or threads, and SQLite's
+        own file locking serialises writers across processes, so the CLI and the
+        web server can run at the same time. Connections are cheap; correctness
+        is not.
+        """
+        conn = sqlite3.connect(self._db_path, timeout=10.0)
+        conn.row_factory = sqlite3.Row
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _row_to_entry(row: sqlite3.Row) -> dict:
+        return {
+            "id": row["id"],
+            "content": row["content"],
+            "category": row["category"],
+            "metadata": json.loads(row["metadata"] or "{}"),
+            "keywords": json.loads(row["keywords"] or "[]"),
+            "timestamp": row["timestamp"],
+            "access_count": row["access_count"],
+        }
+
+    def _migrate_legacy_json(self) -> None:
+        """Import the pre-SQLite JSON store on first use, keeping the original.
+
+        The old file is renamed to `.bak` rather than deleted, so a bad migration
+        is always recoverable by hand.
+        """
+        legacy = self.persist_dir / self.LEGACY_JSON
+        if not legacy.exists():
+            return
+        try:
+            entries = json.loads(legacy.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return          # unreadable — leave it in place for manual recovery
+        with self._conn() as conn:
+            if conn.execute("SELECT 1 FROM memories LIMIT 1").fetchone():
+                return      # database already populated; do not touch the file
             for e in entries:
-                e.setdefault("id", uuid.uuid4().hex[:8])
-            return entries
-        return []
-
-    def _save(self) -> None:
-        with open(self._memory_file, "w", encoding="utf-8") as f:
-            json.dump(self._entries, f, ensure_ascii=False, indent=2)
+                if not isinstance(e, dict) or not e.get("content"):
+                    continue
+                conn.execute(
+                    "INSERT OR IGNORE INTO memories"
+                    " (id, content, category, metadata, keywords, timestamp, access_count)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        e.get("id") or uuid.uuid4().hex[:8],   # backfill pre-id entries
+                        e["content"],
+                        e.get("category", "general"),
+                        json.dumps(e.get("metadata") or {}, ensure_ascii=False),
+                        json.dumps([k for k in (e.get("keywords") or []) if isinstance(k, str)],
+                                   ensure_ascii=False),
+                        float(e.get("timestamp") or time.time()),
+                        int(e.get("access_count") or 0),
+                    ),
+                )
+        backup = legacy.with_suffix(".json.bak")
+        if backup.exists():
+            backup = legacy.with_suffix(".json.bak.%d" % int(time.time()))
+        legacy.replace(backup)
 
     @staticmethod
     def _tokenize(text: str) -> set[str]:
@@ -198,48 +282,55 @@ class LongTermMemory:
         this fact (e.g. "职业", "工作"). They improve recall when the user
         rephrases the question. Returns True if stored, False if duplicate.
         """
-        if dedup:
-            for entry in self._entries:
-                if self._similarity(content, entry.get("content", "")) >= 0.8:
-                    entry["access_count"] = entry.get("access_count", 0) + 1
-                    self._save()
-                    return False
-        entry = {
-            "id": uuid.uuid4().hex[:8],
-            "content": content,
-            "category": category,
-            "metadata": metadata or {},
-            "keywords": [k for k in (keywords or []) if isinstance(k, str)],
-            "timestamp": time.time(),
-            "access_count": 0,
-        }
-        self._entries.append(entry)
-        # Cap memory size: drop the oldest entries beyond MAX_ENTRIES
-        if len(self._entries) > self.MAX_ENTRIES:
-            self._entries = self._entries[-self.MAX_ENTRIES:]
-        self._save()
+        with self._conn() as conn:
+            if dedup:
+                for row in conn.execute("SELECT id, content FROM memories"):
+                    if self._similarity(content, row["content"]) >= 0.8:
+                        conn.execute(
+                            "UPDATE memories SET access_count = access_count + 1 WHERE id = ?",
+                            (row["id"],),
+                        )
+                        return False
+            conn.execute(
+                "INSERT INTO memories"
+                " (id, content, category, metadata, keywords, timestamp, access_count)"
+                " VALUES (?, ?, ?, ?, ?, ?, 0)",
+                (
+                    uuid.uuid4().hex[:8],
+                    content,
+                    category,
+                    json.dumps(metadata or {}, ensure_ascii=False),
+                    json.dumps([k for k in (keywords or []) if isinstance(k, str)],
+                               ensure_ascii=False),
+                    time.time(),
+                ),
+            )
+            # Cap memory size: drop the oldest entries beyond MAX_ENTRIES
+            conn.execute(
+                "DELETE FROM memories WHERE rowid NOT IN"
+                " (SELECT rowid FROM memories ORDER BY rowid DESC LIMIT ?)",
+                (self.MAX_ENTRIES,),
+            )
         return True
 
     def delete(self, memory_id: str) -> bool:
         """Delete a memory entry by id. Returns True if one was removed."""
-        before = len(self._entries)
-        self._entries = [e for e in self._entries if e.get("id") != memory_id]
-        removed = len(self._entries) != before
-        if removed:
-            self._save()
-        return removed
+        with self._conn() as conn:
+            cur = conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
+            return cur.rowcount > 0
 
     def delete_matching(self, keyword: str) -> int:
         """Delete all entries matching a keyword (content or recall keywords)."""
         tokens = self._tokenize(keyword)
-        before = len(self._entries)
-        self._entries = [e for e in self._entries
-                         if not (tokens & (self._tokenize(e.get("content", ""))
-                                           | self._tokenize(" ".join(e.get("keywords", [])))))]
-        removed = before - len(self._entries)
-        if removed:
-            self._save()
-        return removed
+        with self._conn() as conn:
+            victims = [
+                row["id"] for row in
+                conn.execute("SELECT id, content, keywords FROM memories")
+                if tokens & (self._tokenize(row["content"])
+                             | self._tokenize(" ".join(json.loads(row["keywords"] or "[]"))))
+            ]
+            conn.executemany("DELETE FROM memories WHERE id = ?", [(i,) for i in victims])
+            return len(victims)
 
     def search(self, query: str, top_k: int = 5) -> list[dict]:
         """Keyword search over stored memories, matching content AND recall keywords.
@@ -247,19 +338,26 @@ class LongTermMemory:
         Works for Chinese via character bigrams.
         """
         query_tokens = self._tokenize(query)
-        scored = []
-        for entry in self._entries:
-            content_tokens = self._tokenize(entry["content"])
-            kw_tokens = self._tokenize(" ".join(entry.get("keywords", [])))
-            score = len(query_tokens & content_tokens) + len(query_tokens & kw_tokens)
-            if score > 0:
-                scored.append((score, entry))
-        scored.sort(key=lambda x: x[0], reverse=True)
-        results = [e for _, e in scored[:top_k]]
-        # Update access count
-        for r in results:
-            r["access_count"] = r.get("access_count", 0) + 1
-        self._save()
+        with self._conn() as conn:
+            scored = []
+            for row in conn.execute("SELECT * FROM memories ORDER BY rowid"):
+                entry = self._row_to_entry(row)
+                score = (len(query_tokens & self._tokenize(entry["content"]))
+                         + len(query_tokens & self._tokenize(" ".join(entry["keywords"]))))
+                if score > 0:
+                    scored.append((score, entry))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            results = [e for _, e in scored[:top_k]]
+            # Bump access counts with a targeted UPDATE: reading no longer
+            # rewrites the whole store, so a search can't clobber a concurrent
+            # writer's entries the way it used to.
+            if results:
+                conn.executemany(
+                    "UPDATE memories SET access_count = access_count + 1 WHERE id = ?",
+                    [(e["id"],) for e in results],
+                )
+            for r in results:
+                r["access_count"] += 1
         return results
 
     def get_context(self, query: str, top_k: int = 3) -> str:
@@ -273,11 +371,13 @@ class LongTermMemory:
         return "\n".join(lines)
 
     def get_all(self) -> list[dict]:
-        return list(self._entries)
+        with self._conn() as conn:
+            return [self._row_to_entry(r)
+                    for r in conn.execute("SELECT * FROM memories ORDER BY rowid")]
 
     def clear(self) -> None:
-        self._entries.clear()
-        self._save()
+        with self._conn() as conn:
+            conn.execute("DELETE FROM memories")
 
 
 # ─── 统一记忆接口 ─────────────────────────────────────────────
