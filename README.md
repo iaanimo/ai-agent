@@ -398,7 +398,7 @@ orchestrator.add_agent(MyAgent())
 python -m pytest        # 或 .venv/Scripts/python.exe -m pytest
 ```
 
-测试覆盖工具安全（计算器 AST 防逃逸、文件路径封闭、代码执行超时）、记忆（去重/中文检索/自动提取）、Agent 行为（落盘写报告、重规划保留结果、ReAct 重试）、多智能体工具循环。全部使用假 LLM 和临时目录，**不联网、不调用真实 API、不碰真实 data/**。
+测试覆盖工具安全（计算器 AST 防逃逸、文件路径封闭、代码执行超时）、记忆（去重/中文检索/自动提取）、Agent 行为（落盘写报告、重规划保留结果、ReAct 重试）、多智能体工具循环。全部使用假 LLM 和临时目录，**不联网、不调用真实 API、不碰真实 data/**（由 `tests/conftest.py` 的 autouse fixture 强制：它把 settings 单例的 `data_dir` 和 `tempfile` 一并指向 pytest 的 tmp 目录）。
 
 ---
 

@@ -2,6 +2,9 @@
 
 Tests never touch the network, the real DeepSeek API, or the real data/
 directory. All LLM calls go through FakeLLM; all file writes go to tmp dirs.
+
+The `_sandbox_real_paths` fixture below is what actually enforces that last
+claim — see its docstring.
 """
 
 import sys
@@ -13,6 +16,42 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _sandbox_real_paths(tmp_path, monkeypatch):
+    """Keep every test off the real data/ tree and out of the project directory.
+
+    Two leaks this closes:
+
+    1. Modules do `from config.settings import get_settings`, and get_settings
+       is lru_cached — so one shared Settings instance decides where data/
+       lives for every module at once. Redirecting that instance covers all of
+       them. Without this, constructing a Memory() inside a test reads and
+       writes the real data/: since long-term memory moved to SQLite, merely
+       constructing it creates the real store and migrates the real JSON, so
+       running the test suite mutated live user memory.
+
+    2. tempfile falls back to the current directory when TMPDIR holds a POSIX
+       path on Windows, so every `tempfile.mkdtemp()` in the suite dropped a
+       tmp*/ dir into the project root (~8 per run, never cleaned).
+    """
+    import tempfile
+
+    import config.settings as settings_mod
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    settings = settings_mod.get_settings()
+    monkeypatch.setattr(settings, "project_root", tmp_path)
+    monkeypatch.setattr(settings, "data_dir", data_dir)
+    monkeypatch.setattr(settings, "knowledge_base_dir", data_dir / "knowledge_base")
+    monkeypatch.setattr(settings.vector_store, "persist_dir", str(data_dir / "vector_store"))
+
+    tmp_home = tmp_path / "tmp"
+    tmp_home.mkdir(exist_ok=True)
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_home))
 
 
 class _Message:
@@ -45,17 +84,10 @@ def make_llm():
 
 
 @pytest.fixture
-def temp_project_root(tmp_path, monkeypatch):
-    """Point settings.project_root at a temp dir so tests never touch data/.
+def temp_project_root(tmp_path):
+    """Project root for tests that assert on paths written under data/.
 
-    resolve_data_path (used by file_ops and the agent's report writing) reads
-    settings via tools.file_ops.get_settings, so patching that is enough.
+    `_sandbox_real_paths` (autouse) already redirects the settings singleton to
+    this same tmp_path, so all this fixture has to do is hand the path over.
     """
-    import tools.file_ops
-
-    class _FakeSettings:
-        def __init__(self, root: Path):
-            self.project_root = root
-
-    monkeypatch.setattr("tools.file_ops.get_settings", lambda: _FakeSettings(tmp_path))
     return tmp_path
