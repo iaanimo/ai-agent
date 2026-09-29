@@ -1,0 +1,17 @@
+# AI Agent Framework — 可选增强依赖
+# ==================================
+#
+# 这些依赖不装也能跑：RAG 会逐级降级到哈希分桶词频向量，文档加载只保留
+# pypdf / docx2txt / BeautifulSoup 三条内置路径。装上则自动启用对应能力，
+# 业务代码不用改。
+#
+#   pip install -r requirements-optional.txt
+
+# 语义检索（本地嵌入模型）。注意：会连带安装 torch，约 2GB
+sentence-transformers>=3.0.0
+
+# 持久化向量库，替代默认的 FAISS 文件索引
+chromadb>=0.5.0
+
+# 更多文档格式（doc / pptx / xlsx / eml 等超出内置三条路径的格式）
+unstructured>=0.15.0

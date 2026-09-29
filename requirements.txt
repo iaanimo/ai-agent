@@ -8,16 +8,15 @@ langchain-community>=0.3.0
 langchain-openai>=0.2.0
 langchain-text-splitters>=0.3.0
 
-# RAG - Embeddings & Vector Store
+# RAG - Vector Store（默认的 FAISS 文件索引）
 faiss-cpu>=1.8.0
-sentence-transformers>=3.0.0
-chromadb>=0.5.0
 
 # Document Processing
 pypdf>=4.0.0
 docx2txt>=0.8
 beautifulsoup4>=4.12.0
-unstructured>=0.15.0
+
+# 可选增强依赖（语义检索 / ChromaDB / 更多文档格式）见 requirements-optional.txt
 
 # Tools
 duckduckgo-search>=6.0.0

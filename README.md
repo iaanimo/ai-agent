@@ -50,7 +50,13 @@
 
 ```bash
 cd ai-agent
-pip install -r requirements.txt
+pip install -r requirements.txt          # 核心依赖，装完即可运行
+```
+
+可选增强（语义检索、ChromaDB、更多文档格式）——**不装也能跑**，缺依赖时自动降级：
+
+```bash
+pip install -r requirements-optional.txt  # 注意：sentence-transformers 会连带安装 torch（约 2GB）
 ```
 
 ### 2. 配置环境变量
@@ -120,7 +126,7 @@ result = await agent.run("帮我分析这个数据...")
 │         Memory (统一接口)            │
 ├──────────┬──────────┬───────────────┤
 │ 短期记忆  │ 工作记忆  │   长期记忆    │
-│(滑动窗口) │(草稿本)   │(向量持久化)   │
+│(滑动窗口) │(草稿本)   │(关键词检索)   │
 │          │          │              │
 │ 最近20条  │ 当前任务   │ 历史经验     │
 │ 对话历史  │ 上下文     │ 知识积累     │
@@ -221,9 +227,10 @@ RAG 流程：文档加载 → 分块 → 向量化 → 检索 → 增强生成�
 2. `OpenAIEmbeddings`（仅当 provider 支持 embedding 接口时）
 3. **`SimpleEmbeddings`** —— 纯 stdlib + numpy 的**哈希分桶词频向量**，零依赖
 
-> ⚠️ **当前环境走第 3 条**（`sentence-transformers` 未安装），因此检索是
+> ⚠️ **默认依赖下走第 3 条**（核心依赖不含 `sentence-transformers`），因此检索是
 > **词法级**的、不是语义级 —— 同义词、改写问法召回不到。要上语义检索，
-> 装上 `sentence-transformers` 即自动切到第 1 条，业务代码不用动。
+> 装上 `sentence-transformers`（见 `requirements-optional.txt`）即自动切到第 1 条，
+> 业务代码不用动。
 
 ```python
 from rag import RAGRetriever
@@ -240,8 +247,8 @@ answer = await rag.query("什么是 RAG？")
 ```
 
 支持的向量存储：
-- **FAISS**：轻量级，适合中小规模（**当前环境已安装并在用**）
-- **ChromaDB**：持久化，适合生产环境（**接口已接，当前环境未安装**）
+- **FAISS**：轻量级，适合中小规模（**默认存储**，核心依赖自带 `faiss-cpu`）
+- **ChromaDB**：持久化，适合生产环境（接口已接，需装 `requirements-optional.txt`）
 
 ### 7. Multi-Agent — 多智能体协作
 
@@ -291,7 +298,8 @@ result = await orchestrator.run(
 ```
 ai-agent/
 ├── main.py                 # 主入口
-├── requirements.txt        # 依赖
+├── requirements.txt        # 核心依赖
+├── requirements-optional.txt  # 可选增强（语义检索 / ChromaDB / 更多文档格式）
 ├── .env.example            # 环境变量模板
 ├── README.md               # 本文件
 │

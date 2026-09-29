@@ -4,7 +4,7 @@ Memory System
 三层记忆架构：
   1. ConversationBuffer — 短期记忆（滑动窗口对话历史）
   2. WorkingMemory      — 工作记忆（当前任务上下文）
-  3. LongTermMemory     — 长期记忆（持久化向量检索）
+  3. LongTermMemory     — 长期记忆（持久化关键词检索）
 """
 
 import json
@@ -143,11 +143,11 @@ class WorkingMemory:
         self.observations.clear()
 
 
-# ─── 长期记忆：向量持久化 ──────────────────────────────────────
+# ─── 长期记忆：关键词检索持久化 ──────────────────────────────────────
 
 class LongTermMemory:
     """
-    Persistent memory backed by vector store.
+    Persistent memory backed by keyword search (Chinese via character bigrams).
     Stores and retrieves past experiences, facts, and learnings.
     """
 
